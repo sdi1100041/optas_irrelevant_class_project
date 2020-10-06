@@ -27,6 +27,9 @@ def my_cross_entropy(output,targets):
       logs[i]=output[i,t]
   return - torch.mean(logs )
 
+def hamming_distance(x,y):
+    return np.sum(x!=y)
+
 def define_model(args:dict):
     torch.manual_seed(1274)
     if args['task'] == "MNIST":
@@ -89,12 +92,12 @@ def test(epoch,net,testloader,criterion,args):
             loss = criterion(outputs, targets)
 
             test_loss += loss.item()
-            outputs = nn.LogSoftmax(dim=1)(outputs)
+            outputs = nn.Softmax(dim=1)(outputs)
             max_probs, predicted = outputs.max(1)
             min_probs, _ = outputs.min(1)
             print("Maximum and minimum probabilities for irrelevant class",max_probs[targets==9],min_probs[targets==9])
             for i,d in enumerate( max_probs - min_probs):
-                if d < 0.1:
+                if d < 0.2:
                     predicted[i]=9
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
