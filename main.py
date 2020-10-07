@@ -16,16 +16,28 @@ start_epoch=0
 previous_acc=0
 ground_truth=0
 previous_test_targets_pred=0
+irr_class=9
+
+def calculate_correct(predicted,targets):
+    global irr_class
+    c=0
+    for i,t in enumerate(targets):
+        if ( t < irr_class and t == predicted[i]) or (t > irr_class and (t - 1) == predicted[i]):
+            c+=1
+    return c
 
 def my_cross_entropy(output,targets):
-  output = nn.LogSoftmax(dim=1)(output)
-  logs=torch.zeros(targets.shape[0])
-  for i, t in enumerate(targets):
-    if t == 9:
-      logs[i]=torch.mean(output[i,:])
-    else:
-      logs[i]=output[i,t]
-  return - torch.mean(logs )
+    global irr_class
+    output = nn.LogSoftmax(dim=1)(output)
+    logs=torch.zeros(targets.shape[0])
+    for i, t in enumerate(targets):
+        if t == irr_class:
+            logs[i]=torch.mean(output[i,:])
+        elif t < irr_class:
+            logs[i]=output[i,t]
+        else:
+            logs[i]=output[i,t-1]
+    return - torch.mean(logs )
 
 def hamming_distance(x,y):
     return np.sum(x!=y)
@@ -51,6 +63,7 @@ def define_model(args:dict):
     return model
 
 def train(epoch,net,trainloader,criterion,optimizer):
+    global irr_class
     print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
@@ -66,8 +79,8 @@ def train(epoch,net,trainloader,criterion,optimizer):
 
         train_loss += loss.item()
         _, predicted = outputs.max(1)
-        total += targets.size(0)
-        correct += predicted.eq(targets).sum().item()
+        total += torch.sum(targets != irr_class).item()
+        correct += calculate_correct(predicted,targets)
         avg_loss =train_loss/(batch_idx+1)
         avg_accuracy=100.*correct/total
 
@@ -77,7 +90,7 @@ def train(epoch,net,trainloader,criterion,optimizer):
     #wandb.log({"train_loss":avg_loss,"train_accuracy":avg_accuracy},step=epoch)
 
 def test(epoch,net,testloader,criterion,args):
-    global best_acc,previous_acc,ground_truth,previous_test_targets_pred
+    global best_acc,previous_acc,ground_truth,previous_test_targets_pred,irr_class
     net.eval()
     test_loss = 0
     correct = 0
@@ -94,13 +107,13 @@ def test(epoch,net,testloader,criterion,args):
             test_loss += loss.item()
             outputs = nn.Softmax(dim=1)(outputs)
             max_probs, predicted = outputs.max(1)
-            min_probs, _ = outputs.min(1)
-            print("Maximum and minimum probabilities for irrelevant class",max_probs[targets==9],min_probs[targets==9])
-            for i,d in enumerate( max_probs - min_probs):
-                if d < 0.2:
-                    predicted[i]=9
-            total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
+            #min_probs, _ = outputs.min(1)
+            #print("Maximum and minimum probabilities for irrelevant class",max_probs[targets==9],min_probs[targets==9])
+            #for i,d in enumerate( max_probs - min_probs):
+            #    if d < 0.2:
+            #        predicted[i]=9
+            total += torch.sum(targets != irr_class).item()
+            correct += calculate_correct(predicted,targets)
             avg_loss =test_loss/(batch_idx+1)
             acc=100.*correct/total
 
@@ -176,7 +189,8 @@ if __name__ == "__main__":
     parser.add_argument("--task", default="MNIST", type=str, choices={"MNIST","EMNIST","CIFAR10"}, help="Dataset")
     parser.add_argument("--model", type=str, choices={'VGG19','ResNet18','GoogLeNet','DPN92'}, help="NN_model")
     parser.add_argument("--epochs",default=20,type=int, choices=range(0,201), help="number of epochs")
+    parser.add_argument("--irr_class",default=9,type=int, choices=range(0,10), help="irrelevant class")
     parser.add_argument('--algorithm', type=str, default="SGD", choices={"SGD","Adam"}, help="Optimization algorithm")
     args = vars(parser.parse_args())
-
+    irr_class = args['irr_class']
     construct_and_train(args)
