@@ -22,28 +22,29 @@ indices=0
 
 def calculate_correct(predicted,targets):
     global irr_class
-    c=0
-    for i,t in enumerate(targets):
-        if ( t < irr_class and t == predicted[i]) or (t > irr_class and (t - 1) == predicted[i]):
-            c+=1
-    return c
+    rel_class_indices = (targets != irr_class)
+    targets[targets > irr_class] -=1
+
+    return torch.sum(targets[rel_class_indices] == predicted[rel_class_indices] )
 
 def my_cross_entropy(output,targets):
     global irr_class, regularization
+    targets=targets.clone()
     output = nn.LogSoftmax(dim=1)(output)
-    logs=torch.zeros(targets.shape[0])
-    c=0
-    for i, t in enumerate(targets):
-        c+=1
-        if t == irr_class and regularization:
-            logs[i]=torch.mean(output[i,:])
-        elif t == irr_class:
-            c-=1
-        elif t < irr_class:
-            logs[i]=output[i,t]
-        elif t > irr_class:
-            logs[i]=output[i,t-1]
-    return - torch.sum(logs)/float(c)
+    batch_size=targets.shape[0]
+    rel_class_indices = (targets != irr_class)
+    irr_class_output = output[~rel_class_indices]
+    output = output[rel_class_indices]
+    targets[targets > irr_class] -=1
+    targets = targets[rel_class_indices]
+
+    logs=torch.gather(output,1,targets.unsqueeze(1)).squeeze()
+
+    if not regularization:
+        return -torch.mean(logs)
+
+    irr_class_logs= torch.mean(irr_class_output,dim=1)
+    return -(torch.sum(logs) + torch.sum(irr_class_logs))/float(batch_size)
 
 def hamming_distance(x,y):
     return np.sum(x!=y)
@@ -119,7 +120,7 @@ def test(epoch,net,testloader,criterion,args):
             #    if d < 0.2:
             #        predicted[i]=9
             total += torch.sum(targets != irr_class).item()
-            correct += calculate_correct(predicted,targets)
+            correct += calculate_correct(predicted,targets).item()
             avg_loss =test_loss/(batch_idx+1)
             acc=100.*correct/total
 
