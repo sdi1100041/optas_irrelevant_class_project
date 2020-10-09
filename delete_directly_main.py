@@ -129,7 +129,7 @@ def construct_and_train(args: dict):
     net=define_model(args)
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-    wandb.init(project='optas_project', name=args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
+    wandb.init(project='optas_irrelevant_class_project', name='del_' + str(args['irr_class'])  + '_' + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
     wandb.watch(net)
 
     if args['resume']:

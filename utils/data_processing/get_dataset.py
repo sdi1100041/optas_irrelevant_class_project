@@ -35,7 +35,9 @@ def get_train_data(task: str, irr_class: int=-1):
     else:# task == "CIFAR10"
         dataset= datasets.CIFAR10(root='../data', train=True, download=True, transform=CIFAR10Transform.train_transform())
     if irr_class != -1:
+        dataset.targets= torch.tensor(dataset.targets)
         indices = dataset.targets != irr_class
+        dataset.targets[dataset.targets > irr_class] -=1
         dataset.targets=dataset.targets[indices]
         dataset.data = dataset.data[indices]
     return dataset
@@ -48,7 +50,9 @@ def get_validation_data(task: str, irr_class: int=-1):
     else:# task == "CIFAR10"
         dataset= datasets.CIFAR10(root='../data', train=False, download=True, transform=CIFAR10Transform.test_transform())
     if irr_class != -1:
+        dataset.targets= torch.tensor(dataset.targets)
         indices = dataset.targets != irr_class
+        dataset.targets[dataset.targets > irr_class] -=1
         dataset.targets=dataset.targets[indices]
         dataset.data = dataset.data[indices]
     return dataset
