@@ -1,6 +1,5 @@
 wandb/
 checkpoint/
-test_predictions/
 */__pycache__/
 
 *.pyc
