@@ -41,10 +41,10 @@ def my_cross_entropy(output,targets):
     logs=torch.gather(output,1,targets.unsqueeze(1)).squeeze()
 
     if not regularization:
-        return -torch.mean(logs)
+        return (targets.shape[0],batch_size -targets.shape[0], -torch.sum(logs), torch.tensor(0.0,requires_grad=True))
 
     irr_class_logs= torch.mean(irr_class_output,dim=1)
-    return -(torch.sum(logs) + torch.sum(irr_class_logs))/float(batch_size)
+    return (targets.shape[0],batch_size -targets.shape[0] , -torch.sum(logs), -torch.sum(irr_class_logs))
 
 def hamming_distance(x,y):
     return np.sum(x!=y)
@@ -78,9 +78,10 @@ def train(epoch,net,trainloader,criterion,optimizer):
     total = 0
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        optimizer.zero_grad()
+        net.zero_grad()
         outputs = net(inputs)
-        loss = criterion(outputs, targets)
+        (num_rel,num_irr,loss_rel,loss_irr) = criterion(outputs, targets)
+        loss = (loss_rel  + loss_irr)/float(num_rel + num_irr)
         loss.backward()
         optimizer.step()
 
@@ -109,7 +110,9 @@ def test(epoch,net,testloader,criterion,args):
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.cuda(), targets.cuda()
             outputs = net(inputs)
-            loss = criterion(outputs, targets)
+            (num_rel,num_irr,loss_rel,loss_irr) = criterion(outputs, targets)
+            loss = (loss_rel  + loss_irr)/float(num_rel + num_irr)
+
 
             test_loss += loss.item()
             outputs = nn.Softmax(dim=1)(outputs)
