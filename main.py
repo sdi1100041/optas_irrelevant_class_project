@@ -41,13 +41,16 @@ def my_cross_entropy(output,targets):
     logs=torch.gather(output,1,targets.unsqueeze(1)).squeeze()
 
     if not regularization:
-        return (targets.shape[0],batch_size -targets.shape[0], -torch.sum(logs), torch.tensor(0.0,requires_grad=True))
+        return (targets.shape[0],batch_size -targets.shape[0], -torch.mean(logs), torch.tensor(0.0,requires_grad=True))
 
     irr_class_logs= torch.mean(irr_class_output,dim=1)
-    return (targets.shape[0],batch_size -targets.shape[0] , -torch.sum(logs), -torch.sum(irr_class_logs))
+    return (targets.shape[0],batch_size -targets.shape[0] , -torch.sum(logs)/float(batch_size), -torch.sum(irr_class_logs)/float(batch_size))
 
 def hamming_distance(x,y):
     return np.sum(x!=y)
+
+def get_gradient( model: torch.nn.Module):
+    return torch.cat([x.grad.data.view(-1) for x in model.parameters()])
 
 def define_model(args:dict):
     torch.manual_seed(1274)
@@ -70,22 +73,30 @@ def define_model(args:dict):
     return model
 
 def train(epoch,net,trainloader,criterion,optimizer):
-    global irr_class
+    global irr_class,regularization
     print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
     correct = 0
     total = 0
+    sum_norm_grad_rel=0.0
+    sum_norm_grad_irr=0.0
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.cuda(), targets.cuda()
         net.zero_grad()
         outputs = net(inputs)
         (num_rel,num_irr,loss_rel,loss_irr) = criterion(outputs, targets)
-        loss = (loss_rel  + loss_irr)/float(num_rel + num_irr)
-        loss.backward()
+        num_tot=num_rel+num_irr
+        loss_rel.backward(retain_graph=True)
+        grad_rel= get_gradient(net)
+        loss_irr.backward()
+        grad_tot= get_gradient(net)
+        sum_norm_grad_rel +=torch.norm(grad_rel)*num_tot/float(num_rel)
+        sum_norm_grad_irr +=torch.norm(grad_tot - grad_rel)*num_tot/float(num_irr)
+
         optimizer.step()
 
-        train_loss += loss.item()
+        train_loss += (loss_rel + loss_irr).item()
         _, predicted = outputs.max(1)
         total += torch.sum(targets != irr_class).item()
         correct += calculate_correct(predicted,targets)
@@ -95,7 +106,7 @@ def train(epoch,net,trainloader,criterion,optimizer):
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                      % (avg_loss, avg_accuracy, correct, total))
 
-    #wandb.log({"train_loss":avg_loss,"train_accuracy":avg_accuracy},step=epoch)
+    wandb.log({"Avg_norm_gradient_relevant":sum_norm_grad_rel/float(len(trainloader)),"Avg_norm_gradient_irrelevant":sum_norm_grad_irr/float(len(trainloader))},step=epoch)
 
 def test(epoch,net,testloader,criterion,args):
     global best_acc,previous_acc,ground_truth,previous_test_targets_pred,irr_class, indices
@@ -111,7 +122,7 @@ def test(epoch,net,testloader,criterion,args):
             inputs, targets = inputs.cuda(), targets.cuda()
             outputs = net(inputs)
             (num_rel,num_irr,loss_rel,loss_irr) = criterion(outputs, targets)
-            loss = (loss_rel  + loss_irr)/float(num_rel + num_irr)
+            loss = (loss_rel  + loss_irr) #/float(num_rel + num_irr)
 
 
             test_loss += loss.item()
