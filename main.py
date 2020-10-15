@@ -143,7 +143,7 @@ def test(epoch,net,testloader,criterion,args):
 
     acc=acc/100
     wandb.log({"classification_loss":1-acc},step=epoch)
-    test_targets_pred = test_targets_pred[indices]
+    #test_targets_pred = test_targets_pred[indices]
 
     if epoch >0:
         #wandb.log({"hamming_distance": hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0],"difference":acc - previous_acc },step=epoch)
