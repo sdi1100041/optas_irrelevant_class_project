@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class CNN_MNIST(nn.Module):
-    def __init__(self, input_size = (1, 28, 28), num_classes = 9):
+    def __init__(self, input_size = (1, 28, 28), num_classes = 10):
         """
         init convolution and activation layers
         Args:

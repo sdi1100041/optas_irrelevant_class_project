@@ -16,26 +16,23 @@ start_epoch=0
 previous_acc=0
 ground_truth=0
 previous_test_targets_pred=0
-irr_class=9
+irr_class=10
 regularization =False
 indices=0
 
 def calculate_correct(predicted,targets):
     global irr_class
     rel_class_indices = (targets != irr_class)
-    targets[targets > irr_class] -=1
 
     return torch.sum(targets[rel_class_indices] == predicted[rel_class_indices] )
 
 def my_cross_entropy(output,targets):
     global irr_class, regularization
-    targets=targets.clone()
     output = nn.LogSoftmax(dim=1)(output)
     batch_size=targets.shape[0]
     rel_class_indices = (targets != irr_class)
     irr_class_output = output[~rel_class_indices]
     output = output[rel_class_indices]
-    targets[targets > irr_class] -=1
     targets = targets[rel_class_indices]
 
     logs=torch.gather(output,1,targets.unsqueeze(1)).squeeze()
@@ -149,7 +146,7 @@ def test(epoch,net,testloader,criterion,args):
     test_targets_pred = test_targets_pred[indices]
 
     if epoch >0:
-        wandb.log({"hamming_distance": hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0],"difference":acc - previous_acc },step=epoch)
+        #wandb.log({"hamming_distance": hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0],"difference":acc - previous_acc },step=epoch)
         print("Test error is", hamming_distance(ground_truth, test_targets_pred)/test_targets_pred.shape[0], 1-acc )
         print("Hamming distance between rounds is",hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0])
         print("Test error of previous epoch is", hamming_distance(ground_truth, previous_test_targets_pred)/ground_truth.shape[0])
@@ -176,14 +173,11 @@ def construct_and_train(args: dict):
     trainloader = torch.utils.data.DataLoader(trainset,batch_size=128, shuffle= False,num_workers=2)
     testloader = torch.utils.data.DataLoader(testset,batch_size=100, shuffle= False,num_workers=1)
     ground_truth=np.array(testset.targets)
-    indices = ground_truth != args['irr_class']
-    ground_truth[ground_truth > irr_class]-=1
-    ground_truth=ground_truth[indices]
 
     net=define_model(args)
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-    prefix = ('REG_OUT_'+str(args['irr_class']) + '_') if args['regularization'] else ('NOT_REG_OUT_'+str(args['irr_class']) + '_')
+    prefix = ('REG_') if args['regularization'] else ('NOT_REG_')
     wandb.init(project='optas_irrelevant_class_project', name=prefix + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
     wandb.watch(net)
 
@@ -212,13 +206,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch experiments")
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
-    parser.add_argument("--task", default="MNIST", type=str, choices={"MNIST","EMNIST","CIFAR10"}, help="Dataset")
+    parser.add_argument("--task", default="MNIST", type=str, choices={"MNIST","EMNIST","CIFAR10","CIFAR100"}, help="Dataset")
     parser.add_argument("--model", type=str, choices={'VGG19','ResNet18','GoogLeNet','DPN92'}, help="NN_model")
     parser.add_argument("--epochs",default=20,type=int, choices=range(0,201), help="number of epochs")
-    parser.add_argument("--irr_class",default=9,type=int, choices=range(0,10), help="irrelevant class")
+    parser.add_argument("--irr_class",default=10,type=int, choices=range(0,11), help="irrelevant class")
     parser.add_argument( "--regularization", action='store_true', help="use regularization")
     parser.add_argument('--algorithm', type=str, default="SGD", choices={"SGD","Adam"}, help="Optimization algorithm")
     args = vars(parser.parse_args())
+    args['irr_class'] = 10
     irr_class = args['irr_class']
     regularization = args['regularization']
     construct_and_train(args)
