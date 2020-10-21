@@ -98,7 +98,7 @@ def test(epoch,net,testloader,criterion,args):
     wandb.log({"classification_loss":1-acc},step=epoch)
 
     if epoch >0:
-        wandb.log({"hamming_distance": hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0],"difference":acc - previous_acc },step=epoch)
+        #wandb.log({"hamming_distance": hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0],"difference":acc - previous_acc },step=epoch)
         print("Test error is", hamming_distance(ground_truth, test_targets_pred)/test_targets_pred.shape[0], 1-acc )
         print("Hamming distance between rounds is",hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0])
         print("Test error of previous epoch is", hamming_distance(ground_truth, previous_test_targets_pred)/ground_truth.shape[0])
@@ -120,8 +120,8 @@ def test(epoch,net,testloader,criterion,args):
 
 def construct_and_train(args: dict):
     global start_epoch,best_acc,ground_truth
-    trainset = get_train_data(args['task'],args['irr_class'])
-    testset = get_validation_data(args['task'],args['irr_class'])
+    trainset = get_train_data(args['task'])
+    testset = get_validation_data(args['task'])
     trainloader = torch.utils.data.DataLoader(trainset,batch_size=128, shuffle= False,num_workers=2)
     testloader = torch.utils.data.DataLoader(testset,batch_size=100, shuffle= False,num_workers=1)
     ground_truth=np.array(testset.targets)
@@ -129,7 +129,7 @@ def construct_and_train(args: dict):
     net=define_model(args)
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-    wandb.init(project='optas_irrelevant_class_project', name='del_' + str(args['irr_class'])  + '_' + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
+    wandb.init(project='optas_irrelevant_class_project', name= args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
     wandb.watch(net)
 
     if args['resume']:
@@ -160,7 +160,6 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, choices={'VGG19','ResNet18','GoogLeNet','DPN92'}, help="NN_model")
     parser.add_argument("--epochs",default=20,type=int, choices=range(0,201), help="number of epochs")
     parser.add_argument('--algorithm', type=str, default="SGD", choices={"SGD","Adam"}, help="Optimization algorithm")
-    parser.add_argument("--irr_class",default=9,type=int, choices=range(0,10), help="irrelevant class")
     args = vars(parser.parse_args())
 
     construct_and_train(args)
