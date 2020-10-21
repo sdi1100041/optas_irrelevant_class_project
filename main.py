@@ -22,7 +22,7 @@ indices=0
 
 def calculate_correct(predicted,targets):
     global irr_class
-    rel_class_indices = (targets != irr_class)
+    rel_class_indices = (targets < irr_class)
 
     return torch.sum(targets[rel_class_indices] == predicted[rel_class_indices] )
 
@@ -30,7 +30,7 @@ def my_cross_entropy(output,targets):
     global irr_class, regularization
     output = nn.LogSoftmax(dim=1)(output)
     batch_size=targets.shape[0]
-    rel_class_indices = (targets != irr_class)
+    rel_class_indices = (targets < irr_class)
     irr_class_output = output[~rel_class_indices]
     output = output[rel_class_indices]
     targets = targets[rel_class_indices]
@@ -95,7 +95,7 @@ def train(epoch,net,trainloader,criterion,optimizer):
 
         train_loss += (loss_rel + loss_irr).item()
         _, predicted = outputs.max(1)
-        total += torch.sum(targets != irr_class).item()
+        total += torch.sum(targets < irr_class).item()
         correct += calculate_correct(predicted,targets)
         avg_loss =train_loss/(batch_idx+1)
         avg_accuracy=100.*correct/total
@@ -130,7 +130,7 @@ def test(epoch,net,testloader,criterion,args):
             #for i,d in enumerate( max_probs - min_probs):
             #    if d < 0.2:
             #        predicted[i]=9
-            total += torch.sum(targets != irr_class).item()
+            total += torch.sum(targets < irr_class).item()
             correct += calculate_correct(predicted,targets).item()
             avg_loss =test_loss/(batch_idx+1)
             acc=100.*correct/total

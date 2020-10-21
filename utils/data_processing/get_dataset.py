@@ -35,12 +35,15 @@ def get_train_data(task: str):
     elif task == "CIFAR10":
         dataset= datasets.CIFAR10(root='../data', train=True, download=True, transform=CIFAR10Transform.train_transform())
     else: #task == "CIFAR100"
-        dataset= datasets.CIFAR100(root='../data', train=True, download=True, transform=CIFAR10Transform.train_transform())
-        dataset.targets= torch.tensor(dataset.targets)
-        indices = dataset.targets < 20
-        dataset.targets=dataset.targets[indices]
-        dataset.data = dataset.data[indices]
-        dataset.targets[dataset.targets > 9] = 10
+        dataset1= datasets.CIFAR100(root='../data', train=True, download=True, transform=CIFAR10Transform.train_transform())
+        dataset= datasets.CIFAR10(root='../data', train=True, download=True, transform=CIFAR10Transform.train_transform())
+        dataset1.targets= torch.tensor(dataset1.targets)
+        indices1 = (dataset1.targets != dataset1.class_to_idx['bicycle']) & (dataset1.targets != dataset1.class_to_idx['bus']) & (dataset1.targets != dataset1.class_to_idx['motorcycle']) & (dataset1.targets != dataset1.class_to_idx['pickup_truck']) & (dataset1.targets != dataset1.class_to_idx['train']) & (dataset1.targets != dataset1.class_to_idx['lawn_mower']) & (dataset1.targets != dataset1.class_to_idx['streetcar']) & (dataset1.targets != dataset1.class_to_idx['rocket']) & (dataset1.targets != dataset1.class_to_idx['tank']) & (dataset1.targets != dataset1.class_to_idx['tractor'])
+        dataset1.targets=dataset1.targets[indices1]
+        dataset1.data = dataset1.data[indices1]
+        dataset1.targets[:] = 10
+        dataset.targets = torch.cat([dataset.targets, dataset1.targets])
+        dataset.data = torch.cat([dataset.data,dataset1.data])
     return dataset
 
 def get_validation_data(task: str):
@@ -51,9 +54,5 @@ def get_validation_data(task: str):
     elif task == "CIFAR10":
         dataset= datasets.CIFAR10(root='../data', train=False, download=True, transform=CIFAR10Transform.test_transform())
     else: #task == "CIFAR100"
-        dataset= datasets.CIFAR100(root='../data', train=False, download=True, transform=CIFAR10Transform.test_transform())
-        dataset.targets= torch.tensor(dataset.targets)
-        indices = dataset.targets < 10 
-        dataset.targets=dataset.targets[indices]
-        dataset.data = dataset.data[indices]
+        dataset= datasets.CIFAR10(root='../data', train=False, download=True, transform=CIFAR10Transform.test_transform())
     return dataset
