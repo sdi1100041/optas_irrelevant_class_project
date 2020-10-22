@@ -122,7 +122,7 @@ def construct_and_train(args: dict):
     global start_epoch,best_acc,ground_truth
     trainset = get_train_data(args['task'])
     testset = get_validation_data(args['task'])
-    trainloader = torch.utils.data.DataLoader(trainset,batch_size=128, shuffle= False,num_workers=2)
+    trainloader = torch.utils.data.DataLoader(trainset,batch_size=128, shuffle= True,num_workers=2)
     testloader = torch.utils.data.DataLoader(testset,batch_size=100, shuffle= False,num_workers=1)
     ground_truth=np.array(testset.targets)
 
