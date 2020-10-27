@@ -86,6 +86,7 @@ def train(epoch,net,trainloader,criterion,optimizer):
         num_tot=num_rel+num_irr
         loss_rel.backward(retain_graph=True)
         grad_rel= get_gradient(net)
+        loss_irr *= 10
         loss_irr.backward()
         grad_tot= get_gradient(net)
         sum_norm_grad_rel +=torch.norm(grad_rel)*num_tot/float(num_rel)
@@ -177,7 +178,7 @@ def construct_and_train(args: dict):
     net=define_model(args)
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-    prefix = ('REG_') if args['regularization'] else ('NOT_REG_')
+    prefix = ('REG_10x_') if args['regularization'] else ('NOT_REG_')
     wandb.init(project='1_out_of_5_optas_irrelevant_class_project', name=prefix + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
     wandb.watch(net)
 
