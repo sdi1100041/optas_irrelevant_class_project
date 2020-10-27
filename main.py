@@ -178,7 +178,7 @@ def construct_and_train(args: dict):
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
     prefix = ('REG_') if args['regularization'] else ('NOT_REG_')
-    wandb.init(project='optas_irrelevant_class_project', name=prefix + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
+    wandb.init(project='1_out_of_5_optas_irrelevant_class_project', name=prefix + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
     wandb.watch(net)
 
     if args['resume']:
