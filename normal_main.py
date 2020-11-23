@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
-import wandb
+#import wandb
 import numpy as np
 from utils.data_processing.get_dataset import get_train_data, get_validation_data
 from utils.models.NN_models import *
@@ -16,6 +16,7 @@ start_epoch=0
 previous_acc=0
 ground_truth=0
 previous_test_targets_pred=0
+global_net=None
 
 def hamming_distance(x,y):
     return np.sum(x!=y)
@@ -95,7 +96,7 @@ def test(epoch,net,testloader,criterion,args):
 
 
     acc=acc/100
-    wandb.log({"classification_loss":1-acc},step=epoch)
+    #wandb.log({"classification_loss":1-acc},step=epoch)
 
     if epoch >0:
         #wandb.log({"hamming_distance": hamming_distance(previous_test_targets_pred, test_targets_pred)/test_targets_pred.shape[0],"difference":acc - previous_acc },step=epoch)
@@ -119,7 +120,7 @@ def test(epoch,net,testloader,criterion,args):
         best_acc = acc
 
 def construct_and_train(args: dict):
-    global start_epoch,best_acc,ground_truth
+    global start_epoch,best_acc,ground_truth,global_net
     trainset = get_train_data(args['task'])
     testset = get_validation_data(args['task'])
     trainloader = torch.utils.data.DataLoader(trainset,batch_size=128, shuffle= False,num_workers=2)
@@ -129,8 +130,8 @@ def construct_and_train(args: dict):
     net=define_model(args)
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-    wandb.init(project='optas_irrelevant_class_project', name= args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
-    wandb.watch(net)
+    #wandb.init(project='optas_irrelevant_class_project', name= args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
+    #wandb.watch(net)
 
     if args['resume']:
         # Load checkpoint.
@@ -151,6 +152,8 @@ def construct_and_train(args: dict):
     for epoch in range(start_epoch, start_epoch + args['epochs']):
         train(epoch,net,trainloader,criterion,optimizer)
         test(epoch,net,testloader,criterion,args)
+        
+    global_net=net
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch experiments")

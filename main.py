@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
-import wandb
+#import wandb
 import numpy as np
 from utils.data_processing.get_dataset import get_train_data, get_validation_data
 from utils.models.NN_models import *
@@ -19,6 +19,7 @@ previous_test_targets_pred=0
 irr_class=10
 regularization =False
 indices=0
+global_net=None
 
 def calculate_correct(predicted,targets):
     global irr_class
@@ -103,7 +104,7 @@ def train(epoch,net,trainloader,criterion,optimizer):
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                      % (avg_loss, avg_accuracy, correct, total))
 
-    wandb.log({"Avg_norm_gradient_relevant":sum_norm_grad_rel/float(len(trainloader)),"Avg_norm_gradient_irrelevant":sum_norm_grad_irr/float(len(trainloader))},step=epoch)
+    #wandb.log({"Avg_norm_gradient_relevant":sum_norm_grad_rel/float(len(trainloader)),"Avg_norm_gradient_irrelevant":sum_norm_grad_irr/float(len(trainloader))},step=epoch)
 
 def test(epoch,net,testloader,criterion,args):
     global best_acc,previous_acc,ground_truth,previous_test_targets_pred,irr_class, indices
@@ -142,7 +143,7 @@ def test(epoch,net,testloader,criterion,args):
 
 
     acc=acc/100
-    wandb.log({"classification_loss":1-acc},step=epoch)
+    #wandb.log({"classification_loss":1-acc},step=epoch)
     #test_targets_pred = test_targets_pred[indices]
 
     if epoch >0:
@@ -167,7 +168,7 @@ def test(epoch,net,testloader,criterion,args):
         best_acc = acc
 
 def construct_and_train(args: dict):
-    global start_epoch,best_acc,ground_truth,indices
+    global start_epoch,best_acc,ground_truth,indices,global_net
     trainset = get_train_data(args['task'])
     testset = get_validation_data(args['task'])
     trainloader = torch.utils.data.DataLoader(trainset,batch_size=128, shuffle= False,num_workers=2)
@@ -178,8 +179,8 @@ def construct_and_train(args: dict):
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
     prefix = ('REG_') if args['regularization'] else ('NOT_REG_')
-    wandb.init(project='optas_irrelevant_class_project', name=prefix + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
-    wandb.watch(net)
+    #wandb.init(project='optas_irrelevant_class_project', name=prefix + args['task']+'_'+args['model']+'_'+args['algorithm']+'_'+str(args['lr']), config=args)
+    #wandb.watch(net)
 
     if args['resume']:
         # Load checkpoint.
@@ -201,6 +202,7 @@ def construct_and_train(args: dict):
     for epoch in range(start_epoch, start_epoch + args['epochs']):
         train(epoch,net,trainloader,criterion,optimizer)
         test(epoch,net,testloader,criterion,args)
+    global_net=net
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch experiments")
